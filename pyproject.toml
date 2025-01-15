@@ -10,6 +10,9 @@ python = "^3.12"
 streamlit = "^1.41.0"
 
 
+[tool.poetry.group.analysis.dependencies]
+pandas = "^2.2.3"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

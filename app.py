@@ -1,76 +1,101 @@
 import streamlit as st
+import pandas as pd
+import random
+import os
+
+# Configurar o modo wide
+st.set_page_config(layout="wide", page_title="Avaliação LLM", page_icon='🤖')
 
 
-st.title('Avaliação LLM 🤖')
+# Nome do arquivo CSV onde os dados serão armazenados
+CSV_FILE_ANSWERS = "data/respostas_usuarios.csv"
+CSV_FILE_ORIGIN = "data/fr1.csv"
+FR_TEXT = "data/fr1.txt"
 
+# Verifica se o arquivo existe, se não, cria com colunas padrão
+if not os.path.exists(CSV_FILE_ANSWERS):
+    pd.DataFrame(columns=["Texto 1", "Texto 2", "Resposta 1", "Resposta 2", "Resposta 3", "Comentários"]).to_csv(CSV_FILE_ANSWERS, index=True)
+
+# Verifica se o arquivo existe, se não, cria o texto padrão
+if not os.path.exists(FR_TEXT):
+    df = pd.read_csv(CSV_FILE_ORIGIN)
+    with open(FR_TEXT, "w") as f:
+        f.write("{}".format(df['fr'][0]))
+
+# Função para carregar os textos a partir de um CSV
+@st.cache_data
+def load_texts():
+    return pd.read_csv("data/fr1.csv")
+
+
+# Função para selecionar dois textos aleatórios
+def select_random_texts(df):
+    pair = random.sample(df.index.tolist(), 2)
+    return df.loc[pair[0]], df.loc[pair[1]]
+
+# Título
+st.title("Avaliação LLM 🤖")
+
+# Instruções
 st.markdown("""
- Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam lacus erat, commodo non lorem in, imperdiet pharetra justo. Ut volutpat at lectus sed maximus. Fusce sit amet orci felis. Praesent eu efficitur orci, at volutpat quam. Sed vel est dignissim, aliquam augue in, pharetra sem. Nam aliquam posuere mi, vel iaculis nunc laoreet sed. In vehicula convallis commodo. Nam sollicitudin nulla quis neque sagittis, quis mattis felis molestie. In nec mollis nisl. Donec rhoncus augue eleifend diam gravida consectetur. Mauris volutpat, lectus quis suscipit vehicula, sapien nisl porta odio, id eleifend dui erat eu lectus. Donec condimentum neque quis tortor malesuada, id placerat mauris maximus. Maecenas ornare ligula a mi vulputate, id bibendum lacus lacinia. Nullam consectetur mauris id imperdiet consectetur. Nunc tincidunt magna sed lobortis rhoncus.
-
-Morbi malesuada mauris eget felis dignissim, sed accumsan enim feugiat. Suspendisse finibus lectus nisl, at commodo neque eleifend vitae. Donec nec imperdiet est, vitae sagittis nibh. Donec et viverra lorem, facilisis elementum elit. Nulla commodo, lectus ac posuere ultrices, ligula ipsum facilisis massa, accumsan lobortis purus ex et neque. Curabitur accumsan elementum lobortis. Maecenas finibus nulla vel lectus eleifend ullamcorper. Maecenas interdum tincidunt dolor id dignissim. Fusce quis eros diam. In at ante at sapien vehicula sollicitudin. In blandit, orci laoreet ornare eleifend, lacus lacus porttitor elit, et vehicula risus mauris a ipsum.
+### Bem-vindo!
+TEXTO INTRODUTÓRIO
+            
+Abaixo você encontrará dois textos gerados por um modelo de linguagem.
+            
+Vale a pena deixar acesso ao Documento que foi feita a análise?
 """)
 
+st.download_button('Download Documento Original', FR_TEXT)
 
-st.markdown("### Exemplos de Textos")
 
+# Carrega os textos
+textos_df = load_texts()
+
+# Seleciona dois textos aleatórios
+texto1, texto2 = select_random_texts(textos_df)
+
+# Apresenta os textos
+st.markdown("### Textos Selecionados")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header("Texto 1")
-    st.markdown("""
- Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam lacus erat, commodo non lorem in, imperdiet pharetra justo. Ut volutpat at lectus sed maximus. Fusce sit amet orci felis. Praesent eu efficitur orci, at volutpat quam. Sed vel est dignissim, aliquam augue in, pharetra sem. Nam aliquam posuere mi, vel iaculis nunc laoreet sed. In vehicula convallis commodo. Nam sollicitudin nulla quis neque sagittis, quis mattis felis molestie. In nec mollis nisl. Donec rhoncus augue eleifend diam gravida consectetur. Mauris volutpat, lectus quis suscipit vehicula, sapien nisl porta odio, id eleifend dui erat eu lectus. Donec condimentum neque quis tortor malesuada, id placerat mauris maximus. Maecenas ornare ligula a mi vulputate, id bibendum lacus lacinia. Nullam consectetur mauris id imperdiet consectetur. Nunc tincidunt magna sed lobortis rhoncus.
-
-Morbi malesuada mauris eget felis dignissim, sed accumsan enim feugiat. Suspendisse finibus lectus nisl, at commodo neque eleifend vitae. Donec nec imperdiet est, vitae sagittis nibh. Donec et viverra lorem, facilisis elementum elit. Nulla commodo, lectus ac posuere ultrices, ligula ipsum facilisis massa, accumsan lobortis purus ex et neque. Curabitur accumsan elementum lobortis. Maecenas finibus nulla vel lectus eleifend ullamcorper. Maecenas interdum tincidunt dolor id dignissim. Fusce quis eros diam. In at ante at sapien vehicula sollicitudin. In blandit, orci laoreet ornare eleifend, lacus lacus porttitor elit, et vehicula risus mauris a ipsum.
-
-Morbi nec mauris nulla. Maecenas eu sem in sapien sollicitudin tincidunt. Pellentesque ut urna accumsan, laoreet diam id, fermentum risus. Praesent faucibus ut erat a egestas. Phasellus nec tellus velit. Praesent id gravida ligula. Fusce convallis arcu non commodo tempus. Ut ut enim pulvinar, gravida massa eget, auctor nibh. Etiam pulvinar quis magna sit amet facilisis. Fusce et tellus sapien. Etiam iaculis ipsum ac arcu laoreet, scelerisque pulvinar augue convallis. 
-""")
-    
-
+    st.header("Análise 1")
+    st.markdown(texto1["generated_text"])
 
 with col2:
-    st.header("Texto 2")
-    st.markdown("""
- Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam lacus erat, commodo non lorem in, imperdiet pharetra justo. Ut volutpat at lectus sed maximus. Fusce sit amet orci felis. Praesent eu efficitur orci, at volutpat quam. Sed vel est dignissim, aliquam augue in, pharetra sem. Nam aliquam posuere mi, vel iaculis nunc laoreet sed. In vehicula convallis commodo. Nam sollicitudin nulla quis neque sagittis, quis mattis felis molestie. In nec mollis nisl. Donec rhoncus augue eleifend diam gravida consectetur. Mauris volutpat, lectus quis suscipit vehicula, sapien nisl porta odio, id eleifend dui erat eu lectus. Donec condimentum neque quis tortor malesuada, id placerat mauris maximus. Maecenas ornare ligula a mi vulputate, id bibendum lacus lacinia. Nullam consectetur mauris id imperdiet consectetur. Nunc tincidunt magna sed lobortis rhoncus.
+    st.header("Análise 2")
+    st.markdown(texto2["generated_text"])
 
-Morbi malesuada mauris eget felis dignissim, sed accumsan enim feugiat. Suspendisse finibus lectus nisl, at commodo neque eleifend vitae. Donec nec imperdiet est, vitae sagittis nibh. Donec et viverra lorem, facilisis elementum elit. Nulla commodo, lectus ac posuere ultrices, ligula ipsum facilisis massa, accumsan lobortis purus ex et neque. Curabitur accumsan elementum lobortis. Maecenas finibus nulla vel lectus eleifend ullamcorper. Maecenas interdum tincidunt dolor id dignissim. Fusce quis eros diam. In at ante at sapien vehicula sollicitudin. In blandit, orci laoreet ornare eleifend, lacus lacus porttitor elit, et vehicula risus mauris a ipsum.
-
-Morbi nec mauris nulla. Maecenas eu sem in sapien sollicitudin tincidunt. Pellentesque ut urna accumsan, laoreet diam id, fermentum risus. Praesent faucibus ut erat a egestas. Phasellus nec tellus velit. Praesent id gravida ligula. Fusce convallis arcu non commodo tempus. Ut ut enim pulvinar, gravida massa eget, auctor nibh. Etiam pulvinar quis magna sit amet facilisis. Fusce et tellus sapien. Etiam iaculis ipsum ac arcu laoreet, scelerisque pulvinar augue convallis. 
-""")
-
-
-st.markdown("### Precisará definir as perguntas")
-
-
-with st.form("my_form"):
-    st.write("O que você acharam dos textos?")
-    slider_val = st.slider("Form slider")
-    checkbox_val = st.checkbox("Form checkbox")
-
-    option1 = st.radio(
-    "Qual é o texto mais bonito?",
-    ("Texto1", "Texto2", "Os dois!"),
-    horizontal=True
-)
-
-    option2 = st.multiselect(
-    "Qual é o texto mais longo?",
-    ("Texto1", "Texto2", "Os dois!"),
-)
+# Formulário para avaliação
+st.markdown("### Avaliação")
+with st.form("avaliacao_form"):
+    st.write("Responda as perguntas abaixo:")
     
-    option3 = st.selectbox(
-    "Qual é o seu texto?",
-    ("Texto1", "Texto2", "Os dois!"),
-)
-    
-    option4 = st.segmented_control(
-    "Qual é o texto mais longo?",
-    ("Texto1", "Texto2", "Os dois!"),
-)
-    st.text("Qual é a nota que você dá para o texto?")
-    stars = st.feedback("stars")
+    resposta1 = st.radio("Qual texto é mais claro?", ["Texto 1", "Texto 2", "Ambos"])
+    resposta2 = st.radio("Qual texto é mais informativo?", ["Texto 1", "Texto 2", "Ambos"])
+    resposta3 = st.slider("Dê uma nota geral para os textos (1 a 10):", 1, 10)
+    comentarios = st.text_area("Comentários ou sugestões (opcional):")
+    enviado = st.form_submit_button("Enviar")
 
-    entrada_usuario = st.text_input("Deseja sugerir alguma modificação?")
+    if enviado:
+        
+        # Adicionar os novos dados
+        novo_dado = {
+            "Texto 1": texto1["generated_text"],
+            "Texto 2": texto2["generated_text"],
+            "Resposta 1": resposta1,
+            "Resposta 2": resposta2,
+            "Resposta 3": resposta3,
+            "Comentários": comentarios,
+        }
 
-    # Every form must have a submit button.
-    submitted = st.form_submit_button("Submit")
-    if submitted:
-        st.write("slider", slider_val, "checkbox", checkbox_val)
+        novo_df = pd.DataFrame(novo_dado, index=[0])
+
+        try:
+            novo_df.to_csv(CSV_FILE_ANSWERS, mode="a", header=False, index=False)
+            st.success("Respostas enviadas com sucesso!")
+        except Exception as e:
+            st.error(f"Erro ao salvar os dados: {e}")
+        
+        st.success("Respostas enviadas com sucesso!")

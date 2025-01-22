@@ -37,13 +37,14 @@ fr = df['fr'][0]
 st.markdown(f"""
 ### Bem-vindo!
 
-Abaixo você encontrará dois textos gerados por um modelo de linguagem.
+O objetivo deste aplicativo é avaliar a qualidade de textos gerados por um modelo de linguagem.
+Abaixo você encontrará dois textos gerados por modelos.
 Leia os textos e responda as perguntas de avaliação.
 
-Veja o fato relevante abaixo:
+Veja o fato relevante abaixo para entender de onde os textos foram gerados.
 
 """)
-with st.expander("Fato Relevante"):
+with st.expander("Fato Relevante", expanded=True):
     st.write(f'''
         {fr}
     ''')

@@ -1,19 +1,35 @@
 import streamlit as st
 import pandas as pd
 import random
-# import os
+import io
+import os
+import util
+
+HOST = st.secrets["HOST"]
+PORT = st.secrets["PORT"]
+APP_SECRET_UFF_MAIL = st.secrets["APP_SECRET_UFF_MAIL"]
+APP_SECRET_UFF_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
+APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
+
+# Config Session States
+if 'check_email' not in st.session_state:
+    if util.check_login(APP_SECRET_UFF_MAIL, APP_SECRET_UFF_PASSWORD, HOST, PORT):
+        st.session_state.check_email = True
+    else:
+        raise Exception("Erro ao validar o email, por favor entrar em contato com o administrador do sistema.")
+
 
 # Configurar o modo wide
 st.set_page_config(layout="wide", page_title="Avaliação LLM", page_icon='🤖')
 
 
-CSV_FILE_ORIGIN = "data/fr1.csv"
+CSV_FILE_ORIGIN = "data/fr0.csv"
 
 
 # Função para carregar os textos a partir de um CSV
 @st.cache_data
 def load_texts():
-    return pd.read_csv("data/fr1.csv")
+    return pd.read_csv("data/fr0.csv")
 
 
 # Função para selecionar dois textos aleatórios
@@ -56,12 +72,12 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("Análise 1")
-    texto1["generated_text"] = texto1["generated_text"].replace("# ", "### ")
+    texto1["generated_text"] = texto1["generated_text"].replace("# ", "### ").replace("## ", "### ")
     st.markdown(texto1["generated_text"])
 
 with col2:
     st.header("Análise 2")
-    texto2["generated_text"] = texto2["generated_text"].replace("# ", "### ")
+    texto2["generated_text"] = texto2["generated_text"].replace("# ", "### ").replace("## ", "### ")
     st.markdown(texto2["generated_text"])
 
 # Formulário para avaliação
@@ -97,21 +113,32 @@ with st.form("avaliacao_form"):
         
         # Adicionar os novos dados
         novo_dado = {
-            "Texto 1": texto1["generated_text"],
-            "Texto 2": texto2["generated_text"],
-            "Resposta 0": resposta0,
-            "Resposta 1": resposta1,
-            "Resposta 2": resposta2,
-            "Resposta 3": resposta3,
-            "Comentários": comentarios,
+            "Texto 1": [texto1["generated_text"]],
+            "Texto 2": [texto2["generated_text"]],
+            "Resposta 0": [resposta0],
+            "Resposta 1": [resposta1],
+            "Resposta 2": [resposta2],
+            "Resposta 3": [resposta3],
+            "Comentários": [comentarios], 
         }
 
-        # novo_df = pd.DataFrame(novo_dado, index=[0])
+        df = pd.DataFrame(novo_dado)
+
+        # Converter para CSV em memória
+        csv_content = util.dataframe_para_csv(df)
 
         try:
             # Salvar os dados
+            util.send_email(APP_SECRET_UFF_MAIL, 
+                            APP_SECRET_UFF_PASSWORD, 
+                            "Avaliação LLM", 
+                            APP_SECRET_UFF_RECEIVER, 
+                            "Avaliação LLM", 
+                            csv_content, 
+                            'Data.csv', 
+                            HOST, 
+                            PORT)
             st.success("Respostas enviadas com sucesso!")
         except Exception as e:
             st.error(f"Erro ao salvar os dados: {e}")
         
-        st.success("Respostas enviadas com sucesso!")

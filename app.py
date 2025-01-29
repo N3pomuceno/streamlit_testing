@@ -1,19 +1,19 @@
 import streamlit as st
 import pandas as pd
 import random
-import io
-import os
+# import io
+# import os
 import util
 
 HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
-APP_SECRET_UFF_MAIL = st.secrets["APP_SECRET_UFF_MAIL"]
-APP_SECRET_UFF_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
+APP_SECRET_GMAIL = st.secrets["APP_SECRET_GMAIL"]
+APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_GMAIL_PASSWORD"]
 APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
 
 # Config Session States
 if 'check_email' not in st.session_state:
-    if util.check_login(APP_SECRET_UFF_MAIL, APP_SECRET_UFF_PASSWORD, HOST, PORT):
+    if util.check_login(APP_SECRET_GMAIL, APP_SECRET_GMAIL_PASSWORD, HOST, PORT):
         st.session_state.check_email = True
     else:
         raise Exception("Erro ao validar o email, por favor entrar em contato com o administrador do sistema.")
@@ -129,8 +129,8 @@ with st.form("avaliacao_form"):
 
         try:
             # Salvar os dados
-            util.send_email(APP_SECRET_UFF_MAIL, 
-                            APP_SECRET_UFF_PASSWORD, 
+            util.send_email(APP_SECRET_GMAIL, 
+                            APP_SECRET_GMAIL_PASSWORD, 
                             "Avaliação LLM", 
                             APP_SECRET_UFF_RECEIVER, 
                             "Avaliação LLM", 

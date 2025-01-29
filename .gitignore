@@ -1,3 +1,9 @@
+# Config files
 data/new-generations.csv
 small_analysis.py
 .vscode
+
+# Secrets
+.env
+.streamlit/secrets.toml
+googleAPI/*

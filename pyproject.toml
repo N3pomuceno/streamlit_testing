@@ -9,10 +9,18 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.12"
 streamlit = "^1.41.0"
+python-dotenv = "^1.0.1"
 
 
 [tool.poetry.group.analysis.dependencies]
 pandas = "^2.2.3"
+
+
+[tool.poetry.group.google.dependencies]
+google-api-python-client = "^2.160.0"
+google-auth-httplib2 = "^0.2.0"
+google-auth-oauthlib = "^1.2.1"
+st-gsheets-connection = "^0.1.0"
 
 [build-system]
 requires = ["poetry-core"]

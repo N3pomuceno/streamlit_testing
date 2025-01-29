@@ -1,5 +1,6 @@
 # Config files
 data/new-generations.csv
+data/fr0_analise.txt
 small_analysis.py
 .vscode
 

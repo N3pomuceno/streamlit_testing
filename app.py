@@ -7,9 +7,10 @@ import util
 
 HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
-APP_SECRET_GMAIL = st.secrets["APP_SECRET_GMAIL"]
-APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_GMAIL_PASSWORD"]
+APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
+APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
 APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
+APP_ANALISE= st.secrets["APP_ANALISE"]
 
 # Config Session States
 if 'check_email' not in st.session_state:
@@ -142,3 +143,4 @@ with st.form("avaliacao_form"):
         except Exception as e:
             st.error(f"Erro ao salvar os dados: {e}")
         
+st.text(APP_ANALISE)

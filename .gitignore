@@ -1,8 +1,10 @@
 # Config files
+logs/
 data/new-generations.csv
 data/fr0_analise.txt
 small_analysis.py
-.vscode
+.vscode/
+.venv/
 
 # Secrets
 .env

@@ -1,4 +1,5 @@
 # Config files
+src/__pycache__/
 logs/
 data/new-generations.csv
 data/fr0_analise.txt

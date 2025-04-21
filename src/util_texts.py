@@ -3,6 +3,7 @@ RELEVANT_INFO = {
         "Introduction": "",
         "form_extent_intro": "### Responda as perguntas com o padrão de escala de 1 a 5, sendo 1 muito ruim e 5 muito bom.",
         "new_fr_text": "",
+        "": "",
     },
     "form_extent": {
         "question0": {

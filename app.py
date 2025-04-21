@@ -5,7 +5,9 @@ import pandas as pd
 import streamlit as st
 
 import src.util as util
-from src.util_questions import RELEVANT_INFO
+from src.util_texts import RELEVANT_INFO
+
+# from src.logger import setup_logger
 
 # import io
 # import os
@@ -15,19 +17,26 @@ PORT = st.secrets["PORT"]
 APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
 APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
 APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
-APP_ANALISE = st.secrets["APP_ANALISE"]
-CSV_FILE_ORIGIN = "data/m3_fr20_rankedModels.csv"
+CSV_FILE_ORIGIN = st.secrets["CSV_FILE_ORIGIN"]
 form_extent = RELEVANT_INFO["form_extent"]
+# logger = setup_logger("logs", "app.log", "INFO")
 
 
-# Função para carregar os textos a partir de um CSV
-@st.cache_data
-def load_df():
-    return pd.read_csv(CSV_FILE_ORIGIN)
+def init_session_state_var(key, default_value):
+    """
+    Inicializa uma variável de estado da sessão se ela não existir.
+    """
+    # logger.info("Inicializando variável de estado da sessão: {}".format(key))
+    if key not in st.session_state:
+        st.session_state[key] = default_value
 
 
 # Config Session States
 def set_session_state():
+    """
+    Inicia as variáveis de estado da sessão.
+    """
+    # Valida e-mail
     if "check_email" not in st.session_state:
         if util.check_login(APP_SECRET_GMAIL, APP_SECRET_GMAIL_PASSWORD, HOST, PORT):
             st.session_state.check_email = True
@@ -35,49 +44,67 @@ def set_session_state():
             raise Exception(
                 "Erro ao validar o email, por favor entrar em contato com o administrador do sistema."
             )
+    # Define um ID único para a sessão
+    init_session_state_var(
+        "id",
+        str(random.randint(0, 1000000)).zfill(6)
+        + datetime.now().strftime("%d_%m_%Y_%H%M"),
+    )
+    # Define a quantidade de modelos e de fatos relevantes baseado no nome do arquivo CSV
+    init_session_state_var(
+        "n_models", int(CSV_FILE_ORIGIN.split("/")[1].split("_")[0][1:])
+    )
+    init_session_state_var("n_fr", int(CSV_FILE_ORIGIN.split("/")[1].split("_")[1][2:]))
 
-    if "id" not in st.session_state:
-        st.session_state.id = str(random.randint(0, 1000000)).zfill(
-            6
-        ) + datetime.now().strftime("%d_%m_%Y_%H%M")
+    # Define ordens de estágio da atividade, da quantidade de modelos e de fatos relevantes respectivamente
+    init_session_state_var("order", 0)
+    init_session_state_var("page_order", 0)
+    init_session_state_var("fr_order", 0)
 
-    if "n_models" not in st.session_state:
-        st.session_state.n_models = int(CSV_FILE_ORIGIN.split("/")[1].split("_")[0][1:])
+    # Define uma lista com a ordem de modelos que serão apresentados e um dicionário com as análises
+    init_session_state_var("fr_model_order", [])
+    init_session_state_var("analises", {})
 
-    if "n_fr" not in st.session_state:
-        st.session_state.n_fr = int(CSV_FILE_ORIGIN.split("/")[1].split("_")[1][2:])
+    # Define o estado da avaliação para o caso de analisar em dupla
+    init_session_state_var("most_liked_analysis_defined", False)
 
-    if "order" not in st.session_state:
-        st.session_state.order = 0
+    # Define o estado da avaliação para o caso de avaliar em grão mais fino.
+    init_session_state_var("extent", False)
 
-    if "page_order" not in st.session_state:
-        st.session_state.page_order = 0
-
-    if "fr_order" not in st.session_state:
-        st.session_state.fr_order = 0
-
-    if "fr_model_order" not in st.session_state:
-        st.session_state.fr_model_order = []
-
-    if "analises" not in st.session_state:
-        st.session_state.analises = {}
-
-    if "most_liked_analysis_defined" not in st.session_state:
-        st.session_state.most_liked_analysis_defined = False
-
-    if "extent" not in st.session_state:
-        st.session_state.extent = False
-
+    # Define o estado do formulário e também o estado das questões.
+    init_session_state_var("form_submitted", False)
+    init_session_state_var("most_liked", None)
+    # init_session_state_var("fluencia", None)
+    # init_session_state_var("coerencia", None)
+    # init_session_state_var("factualidade", None)
+    # init_session_state_var("aderencia", None)
+    # init_session_state_var("utilidade", None)
+    # init_session_state_var("comentarios", None)
     return None
+
+
+set_session_state()
+
+
+# Função para carregar os textos a partir de um CSV
+@st.cache_data
+def load_df():
+    """
+    Retorna um DataFrame a partir de um arquivo CSV.
+    O arquivo CSV deve conter as colunas 'generator_model', 'generated_text' e 'human_ref'.
+    """
+    return pd.read_csv(CSV_FILE_ORIGIN)
 
 
 # Configurar o modo wide
 def set_page_config():
+    # logger.info("Configurando o layout da página")
     st.set_page_config(layout="wide", page_title="Avaliação LLM", page_icon="🤖")
 
 
-def select_texts(analises_dict):
-    keys = list(analises_dict.keys())[:2]
+# Função para selecionar os textos a serem exibidos
+def select_texts(analises_dict, analises_order):
+    keys = analises_order[:2]
     return analises_dict[keys[0]], analises_dict[keys[1]]
 
 
@@ -87,44 +114,115 @@ def next_page():
     return None
 
 
-def run_app():
+# Callback do botão — só marca que o botão foi clicado do formulário.
+def form_callback():
+    st.session_state["form_submitted"] = True
+
+
+def load_data():
+    # logger.info(
+    #     "Carregando dados do CSV e definindo os dados temporários por ordem, fato relevante atual: {}".format(
+    #         st.session_state.fr_order
+    #     )
+    # )
+    # Carrega o CSV e define o fato relevante
+    df = load_df()
+    df_temp = df[df["new_id"] == st.session_state.fr_order]
+
+    # Carrega os textos, cria dicionário para manter informações conectadas, e lista para definir ordem de aparecimento.
+    if len(st.session_state.analises) == 0:
+        for _, row in df_temp.iterrows():
+            st.session_state.analises[row["generator_model"]] = row["generated_text"]
+        st.session_state.analises["human_ref"] = df_temp["human_ref"].iloc[0]
+        print("Novas análises definidas: {}".format(st.session_state.analises.keys()))
+
+    # Define uma lista com ordem dos modelos baseado na coluna total_rank e por último o humano
+    if len(st.session_state.fr_model_order) == 0:
+        order = list(df_temp["generator_model"].unique())
+        order.reverse()
+        order.append("human_ref")
+        st.session_state.fr_model_order = order
+        print("Nova ordem estabelecida: {}".format(order))
+
+    # Define o Fato Relevante que será apresentado
+    init_session_state_var("material_fact", df_temp["material fact"].iloc[0])
+    return None
+
+
+# TODO Alterar para alterar a lista de acordo com os fato relevantes forem sendo definidos.
+if st.session_state["form_submitted"]:
+    st.session_state.page_order += 1
+    if st.session_state.extent or st.session_state.most_liked_analysis_defined:
+        if len(st.session_state.fr_model_order) == 0:
+            st.session_state.fr_order += 1
+            st.session_state.page_order = 0
+        else:
+            st.session_state.fr_model_order.pop(0)
+
+        if st.session_state.most_liked_analysis_defined:
+            st.session_state.most_liked_analysis_defined = False
+    else:
+        # Prepara para próxima página
+        print("Resposta = {}".format(st.session_state.most_liked))
+        if st.session_state.most_liked == "Análise A":
+            # Retira o outro texto da lista
+            print("Excluindo modelo {}".format(st.session_state.fr_model_order[1]))
+            st.session_state.analises.pop(st.session_state.fr_model_order[1])
+            st.session_state.fr_model_order.pop(1)
+            print("Modelos Restantes: {}".format(st.session_state.fr_model_order))
+        elif st.session_state.most_liked == "Análise B":
+            print("Excluindo modelo {}".format(st.session_state.fr_model_order[0]))
+            # Retira o outro texto da lista
+            st.session_state.analises.pop(st.session_state.fr_model_order[0])
+            st.session_state.fr_model_order.pop(0)
+            print("Modelos Restantes: {}".format(st.session_state.fr_model_order))
+        if len(st.session_state.fr_model_order) == 1:
+            st.session_state.most_liked_analysis_defined = True
+            print("Definindo a análise mais gostada.")
+    st.session_state["form_submitted"] = False
+
+
+# Funções para mostrar as páginas
+def show_intro_page():
+    pass
+
+
+def show_finishing_page():
+    pass
+
+
+def show_comparing_page():
+    pass
+
+
+def show_evaluation_page():
+    pass
+
+
+def show_interface():
     # Título
     st.title("Avaliação LLM 🤖")
 
     if st.session_state.order == 0:
+        show_intro_page()
         st.markdown("""### Instruções
-                    
+
                     Adicionar Texto.""")
         st.session_state.extent = st.checkbox("Avaliação Extendida", value=False)
         st.button("Avançar", key="button1", on_click=next_page)
-    elif st.session_state.n_fr == st.session_state.fr_model_order:
-        st.markdown(
-            """
-                    ### Você avaliou todos os textos!
-                    Obrigado por Participar!
+    elif st.session_state.n_fr == st.session_state.fr_model_order:  # Last Page
+        show_finishing_page()
+        # st.markdown(
+        #     """
+        #             ### Você avaliou todos os textos!
+        #             Obrigado por Participar!
 
-                    Para maiores informações, entre em contato com o administrador do sistema."""
-        )
+        #             Para maiores informações, entre em contato com o administrador do sistema."""
+        # )
     else:
-        # Carrega o CSV e define o fato relevante
-        df = load_df()
-        df_temp = df[df["new_id"] == st.session_state.fr_order]
+        fr = st.session_state.material_fact
 
-        # Carrega os textos, cria dicionário para manter informações conectadas, e lista para definir ordem de aparecimento.
-        for _, row in df_temp.iterrows():
-            st.session_state.analises[row["generator_model"]] = row["generated_text"]
-        st.session_state.analises["human_ref"] = df_temp["human_ref"].iloc[0]
-        # Define uma lista com ordem dos modelos baseado na coluna total_rank e por último o humano
-        if len(st.session_state.fr_model_order) == 0:
-            order = list(df_temp["generator_model"].unique())
-            order.reverse()
-            order.append("human_ref")
-            st.session_state.fr_model_order = order
-            # Ordem definida, precisa fazer a passagem de duas formas, entre comparação de duas colunas, e algo fazendo continuamente para todos.
-
-        fr = df_temp["material fact"].iloc[0]
-
-        # Instruções
+        # Instruções da Atividade
         st.markdown(
             """
         ### Bem-vindo!
@@ -137,6 +235,16 @@ def run_app():
 
         """
         )
+
+        # Progresso Visual para o usuário.
+        st.progress(
+            (st.session_state.fr_order + 1) / st.session_state.n_fr,
+            text="Fato Relevante: {}/{}".format(
+                st.session_state.fr_order + 1, st.session_state.n_fr
+            ),
+        )
+
+        # Fato Relevante para o usuário Visualizar
         with st.expander("Fato Relevante", expanded=True):
             st.write(
                 f"""
@@ -144,29 +252,34 @@ def run_app():
             """
             )
 
+        # Verifica se é a avaliação em grão mais fino ou se é o último caso da avaliação de comparação
         if st.session_state.extent or st.session_state.most_liked_analysis_defined:
-            if st.session_state.extent:
-                generated_text = st.session_state.analises[
-                    st.session_state.fr_model_order[st.session_state.page_order]
-                ]
-            else:
-                generated_text = st.session_state.analises[
-                    st.session_state.fr_model_order[0]
-                ]
+            print(st.session_state.fr_model_order)
+            generator_model = st.session_state.fr_model_order[0]
+            generated_text = st.session_state.analises[generator_model]
+            print("Modelo: {}".format(generator_model))
+
+            # Verifica se é o último modelo ou se é a versão de validar em par para reiniciar os modelos.
+            if (
+                st.session_state.most_liked_analysis_defined
+                or st.session_state.page_order == st.session_state.n_models
+            ):
+                st.session_state.analises = {}
+                st.session_state.fr_model_order = []
 
             text = generated_text.replace("# ", "### ").replace("## ", "### ")
             st.markdown(text)
 
             # Formulário para avaliação
             st.markdown("## Avaliação")
-            with st.form("avaliacao_form", clear_on_submit=True):
+            with st.form("avaliacao_form", clear_on_submit=False):
                 st.markdown(RELEVANT_INFO["texts"]["form_extent_intro"])
                 st.markdown(form_extent["question0"]["question"])
 
                 resposta0 = st.pills(
                     "Fluência",
                     options=form_extent["question0"]["options"],
-                    key="Fluência",
+                    key="fluencia",
                     help="1 - Muito ruim, 2 - Ruim, 3 - Regular, 4 - Bom, 5 - Muito bom",
                     label_visibility="collapsed",
                 )
@@ -176,14 +289,14 @@ def run_app():
                 resposta1 = st.pills(
                     "Coerência",
                     options=form_extent["question1"]["options"],
-                    key="Coerência",
+                    key="coerencia",
                     help="1 - Muito ruim, 2 - Ruim, 3 - Regular, 4 - Bom, 5 - Muito bom",
                     label_visibility="collapsed",
                 )
 
                 st.markdown(form_extent["question2"]["question"])
                 resposta2 = st.pills(
-                    "Factualidade",
+                    "factualidade",
                     options=form_extent["question2"]["options"],
                     key="Factualidade",
                     help="1 - Muito ruim, 2 - Ruim, 3 - Regular, 4 - Bom, 5 - Muito bom",
@@ -192,7 +305,7 @@ def run_app():
 
                 st.markdown(form_extent["question3"]["question"])
                 resposta3 = st.pills(
-                    "Aderência",
+                    "aderencia",
                     options=form_extent["question3"]["options"],
                     key="Aderência",
                     help="1 - Muito ruim, 2 - Ruim, 3 - Regular, 4 - Bom, 5 - Muito bom",
@@ -202,7 +315,7 @@ def run_app():
                 st.markdown(form_extent["question4"]["question"])
 
                 resposta4 = st.pills(
-                    "Utilidade",
+                    "utilidade",
                     options=form_extent["question4"]["options"],
                     key="Utilidade",
                     help="1 - Muito ruim, 2 - Ruim, 3 - Regular, 4 - Bom, 5 - Muito bom",
@@ -217,23 +330,9 @@ def run_app():
                     label_visibility="collapsed",
                 )
 
-                enviado = st.form_submit_button("Enviar")
+                enviado = st.form_submit_button("Enviar", on_click=form_callback)
 
                 if enviado:
-                    # Prepara para próxima página
-                    st.session_state.page_order += 1
-                    if st.session_state.page_order >= st.session_state.n_models + 1:
-                        st.session_state.fr_order += 1
-                        st.session_state.page_order = 0
-
-                    if st.session_state.most_liked_analysis_defined:
-                        st.session_state.most_liked_analysis_defined = False
-
-                    generator_model = st.session_state.fr_model_order[
-                        st.session_state.page_order
-                    ]
-
-                    # Preparar novos dados para serem recebidos;
                     novo_dado = {
                         "text": [text],
                         "material_fact": [fr],
@@ -275,7 +374,14 @@ def run_app():
                         )
         else:
             # Definir as duas análises por ordem da lista
-            texto1, texto2 = select_texts(st.session_state.analises)
+            print(
+                "Hora da análise: {} - {}".format(
+                    st.session_state.fr_model_order, st.session_state.fr_model_order[0]
+                )
+            )
+            texto1, texto2 = select_texts(
+                st.session_state.analises, st.session_state.fr_model_order
+            )
 
             # Preparar textos e definir as colunas
             col1, col2 = st.columns(2)
@@ -283,51 +389,47 @@ def run_app():
             with col1:
                 st.header("Análise A")
                 texto1 = texto1.replace("# ", "### ").replace("## ", "### ")
+                print(
+                    "{} - {}".format(
+                        st.session_state.fr_model_order,
+                        st.session_state.fr_model_order[0],
+                    )
+                )
                 st.markdown(texto1)
 
             with col2:
                 st.header("Análise B")
                 texto2 = texto2.replace("# ", "### ").replace("## ", "### ")
+                print(
+                    "{} - {}".format(
+                        st.session_state.fr_model_order,
+                        st.session_state.fr_model_order[1],
+                    )
+                )
                 st.markdown(texto2)
 
             # Formulário para avaliação
             st.markdown("## Avaliação")
             with st.form("form_most_liked", clear_on_submit=True):
                 st.markdown("#### Qual análise você mais gostou? (Selecione uma opção)")
-                resposta0 = st.selectbox(
+                resposta0 = st.pills(
                     "Selecione uma opção",
                     options=["Análise A", "Análise B"],
                     key="most_liked",
                     label_visibility="collapsed",
                 )
-                enviado = st.form_submit_button("Enviar")
-
-                if enviado:
-                    # Prepara para próxima página
-                    st.session_state.page_order += 1
-                    if resposta0 == "Análise A":
-                        # Retira o outro texto da lista
-                        st.session_state.analises.pop(
-                            st.session_state.fr_model_order[1]
-                        )
-                        st.session_state.fr_model_order.pop(1)
-                    elif resposta0 == "Análise B":
-                        # Retira o outro texto da lista
-                        st.session_state.analises.pop(
-                            st.session_state.fr_model_order[0]
-                        )
-                        st.session_state.fr_model_order.pop(0)
-                    if len(st.session_state.fr_model_order) == 1:
-                        st.session_state.most_liked_analysis_defined = True
+                enviado = st.form_submit_button("Enviar", on_click=form_callback)
 
 
 def main():
     # Configuração do Streamlit
-    set_session_state()
-    # Configuração da página
     set_page_config()
+
+    # Carregar dados
+    load_data()
+
     # Execução do aplicativo
-    run_app()
+    show_interface()
 
 
 if __name__ == "__main__":

@@ -74,12 +74,6 @@ def set_session_state():
     # Define o estado do formulário e também o estado das questões.
     init_session_state_var("form_submitted", False)
     init_session_state_var("most_liked", None)
-    # init_session_state_var("fluencia", None)
-    # init_session_state_var("coerencia", None)
-    # init_session_state_var("factualidade", None)
-    # init_session_state_var("aderencia", None)
-    # init_session_state_var("utilidade", None)
-    # init_session_state_var("comentarios", None)
     return None
 
 
@@ -145,7 +139,8 @@ def load_data():
         print("Nova ordem estabelecida: {}".format(order))
 
     # Define o Fato Relevante que será apresentado
-    init_session_state_var("material_fact", df_temp["material fact"].iloc[0])
+    st.session_state["material_fact"] = df_temp["material fact"].iloc[0]
+
     return None
 
 
@@ -221,7 +216,7 @@ def show_interface():
         # )
     else:
         fr = st.session_state.material_fact
-
+        fr = fr.replace("$", r"\$")
         # Instruções da Atividade
         st.markdown(
             """
@@ -267,7 +262,11 @@ def show_interface():
                 st.session_state.analises = {}
                 st.session_state.fr_model_order = []
 
-            text = generated_text.replace("# ", "### ").replace("## ", "### ")
+            text = (
+                generated_text.replace("# ", "### ")
+                .replace("## ", "### ")
+                .replace("$", r"\$")
+            )
             st.markdown(text)
 
             # Formulário para avaliação
@@ -388,7 +387,11 @@ def show_interface():
 
             with col1:
                 st.header("Análise A")
-                texto1 = texto1.replace("# ", "### ").replace("## ", "### ")
+                texto1 = (
+                    texto1.replace("# ", "### ")
+                    .replace("## ", "### ")
+                    .replace("$", r"\$")
+                )
                 print(
                     "{} - {}".format(
                         st.session_state.fr_model_order,
@@ -399,7 +402,11 @@ def show_interface():
 
             with col2:
                 st.header("Análise B")
-                texto2 = texto2.replace("# ", "### ").replace("## ", "### ")
+                texto2 = (
+                    texto2.replace("# ", "### ")
+                    .replace("## ", "### ")
+                    .replace("$", r"\$")
+                )
                 print(
                     "{} - {}".format(
                         st.session_state.fr_model_order,

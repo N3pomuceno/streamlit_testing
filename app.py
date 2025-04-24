@@ -16,7 +16,9 @@ HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
 APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
 APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
-APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
+APP_SECRET_UFF_RECEIVER = st.secrets[
+    "APP_SECRET_TEST_RECEIVER"
+]  # APP_SECRET_UFF_RECEIVER"]
 CSV_FILE_ORIGIN = st.secrets["CSV_FILE_ORIGIN"]
 form_extent = RELEVANT_INFO["form_extent"]
 # logger = setup_logger("logs", "app.log", "INFO")
@@ -47,8 +49,10 @@ def set_session_state():
     # Define um ID único para a sessão
     init_session_state_var(
         "id",
-        str(random.randint(0, 1000000)).zfill(6)
-        + datetime.now().strftime("%d_%m_%Y_%H%M"),
+        "{}-{}".format(
+            str(random.randint(0, 1000000)).zfill(6),
+            datetime.now().strftime("%d_%m_%Y_%H%M"),
+        ),
     )
     # Define a quantidade de modelos e de fatos relevantes baseado no nome do arquivo CSV
     init_session_state_var(
@@ -67,6 +71,7 @@ def set_session_state():
 
     # Define o estado da avaliação para o caso de analisar em dupla
     init_session_state_var("most_liked_analysis_defined", False)
+    init_session_state_var("most_liked_order", "")
 
     # Define o estado da avaliação para o caso de avaliar em grão mais fino.
     init_session_state_var("extent", False)
@@ -156,21 +161,22 @@ if st.session_state["form_submitted"]:
 
         if st.session_state.most_liked_analysis_defined:
             st.session_state.most_liked_analysis_defined = False
+            st.session_state.most_liked_order = ""
     else:
         # Prepara para próxima página
         print("Resposta = {}".format(st.session_state.most_liked))
         if st.session_state.most_liked == "Análise A":
-            # Retira o outro texto da lista
-            print("Excluindo modelo {}".format(st.session_state.fr_model_order[1]))
-            st.session_state.analises.pop(st.session_state.fr_model_order[1])
-            st.session_state.fr_model_order.pop(1)
-            print("Modelos Restantes: {}".format(st.session_state.fr_model_order))
+            indice = 1
         elif st.session_state.most_liked == "Análise B":
-            print("Excluindo modelo {}".format(st.session_state.fr_model_order[0]))
-            # Retira o outro texto da lista
-            st.session_state.analises.pop(st.session_state.fr_model_order[0])
-            st.session_state.fr_model_order.pop(0)
-            print("Modelos Restantes: {}".format(st.session_state.fr_model_order))
+            indice = 0
+        print("Excluindo modelo {}".format(st.session_state.fr_model_order[indice]))
+        st.session_state.most_liked_order = "{} > {}".format(
+            st.session_state.most_liked_order, st.session_state.fr_model_order[indice]
+        )
+        # Retira o outro texto da lista
+        st.session_state.analises.pop(st.session_state.fr_model_order[indice])
+        st.session_state.fr_model_order.pop(indice)
+        print("Modelos Restantes: {}".format(st.session_state.fr_model_order))
         if len(st.session_state.fr_model_order) == 1:
             st.session_state.most_liked_analysis_defined = True
             print("Definindo a análise mais gostada.")
@@ -200,20 +206,40 @@ def show_interface():
 
     if st.session_state.order == 0:
         show_intro_page()
-        st.markdown("""### Instruções
+        st.markdown("""
+                    ### Bem-vindo(a)!
 
-                    Adicionar Texto.""")
-        st.session_state.extent = st.checkbox("Avaliação Extendida", value=False)
+                    Este formulário tem como objetivo coletar avaliações de diferentes análises sobre documentos financeiros específicos. A sua participação é fundamental para compreendermos a percepção sobre a qualidade das análises produzidas com base em critérios como fluência textual, factualidade e coerência argumentativa entre outros.
+
+                    Você poderá escolher entre dois formatos de avaliação:
+
+                    #### **Avaliação Comparativa Simples**
+
+                    Nesta opção, você irá comparar as análises disponíveis e escolher aquela que mais se destaca em sua opinião. Em seguida, você fará uma avaliação detalhada apenas dessa análise escolhida.
+
+                    #### **Avaliação Detalhada de Todas as Análises**
+
+                    Nesta opção, você realizará uma avaliação individual e aprofundada de todas as análises disponíveis, atribuindo notas ou comentários sobre aspectos como fluência, precisão dos dados, estrutura argumentativa, entre outros. Para escolher essa opção, você deve estar ciente de que a avaliação será mais extensa e exigirá mais tempo. Caso tenha interesse nela, basta marcar a opção abaixo.
+
+                    ##### ⚠️ A escolha do formato de avaliação impacta na quantidade de horas complementares que serão atribuídas!
+
+                    Escolha o formato que melhor se encaixa na sua disponibilidade e interesse. Em qualquer dos casos, sua participação é muito valiosa para o projeto.
+                    
+                    ---
+                    """)
+        st.session_state.extent = st.checkbox("Avaliação Detalhada", value=False)
         st.button("Avançar", key="button1", on_click=next_page)
     elif st.session_state.n_fr == st.session_state.fr_model_order:  # Last Page
         show_finishing_page()
-        # st.markdown(
-        #     """
-        #             ### Você avaliou todos os textos!
-        #             Obrigado por Participar!
+        st.markdown(
+            """
+            ✅ Avaliação Concluída!
 
-        #             Para maiores informações, entre em contato com o administrador do sistema."""
-        # )
+            Obrigado pela sua participação!
+
+            Sua avaliação foi registrada com sucesso. Agradecemos por contribuir com a análise crítica das interpretações de documentos financeiros — sua colaboração é essencial para o desenvolvimento de iniciativas acadêmicas e de pesquisa na área.
+            """
+        )
     else:
         fr = st.session_state.material_fact
         fr = fr.replace("$", r"\$")
@@ -222,11 +248,17 @@ def show_interface():
             """
         ### Bem-vindo!
 
-        O objetivo deste aplicativo é avaliar a qualidade de textos gerados por um modelo de linguagem.
-        Abaixo você encontrará análises gerados por modelos.
-        Leia-os e responda as perguntas de avaliação.
+        ###### Este aplicativo tem como objetivo avaliar a qualidade das análises apresentadas com base em um documento financeiro.
 
-        Veja o fato relevante abaixo para entender de onde os textos foram gerados.
+        ##### ✅ Siga os passos abaixo:
+
+        Leia o fato relevante apresentado abaixo.
+        Ele é a base para todas as análises que você verá a seguir.
+
+        Responda o formulário ao final da página.
+        O tipo de formulário exibido dependerá do formato de avaliação que você escolheu anteriormente.
+
+        🕒 Lembre-se de sempre responder os formulários no final.
 
         """
         )
@@ -333,6 +365,7 @@ def show_interface():
 
                 if enviado:
                     novo_dado = {
+                        "id": [st.session_state.id],
                         "text": [text],
                         "material_fact": [fr],
                         "generator_model": generator_model,
@@ -342,6 +375,7 @@ def show_interface():
                         "answer3": [resposta3],
                         "answer4": [resposta4],
                         "sugestions": [comentarios0],
+                        "most_liked_order": [st.session_state.most_liked_order],
                     }
 
                     df_answer = pd.DataFrame(novo_dado)
@@ -351,19 +385,25 @@ def show_interface():
 
                     try:
                         # # Salvar os dados
-                        # util.send_email(
-                        #     usn=APP_SECRET_GMAIL,
-                        #     pwd=APP_SECRET_GMAIL_PASSWORD,
-                        #     sub="Avaliação LLM: {}".format(st.session_state.id),
-                        #     to=APP_SECRET_UFF_RECEIVER,
-                        #     body="Avaliação LLM: doc {} \n generator_model {}".format(
-                        #         st.session_state.fr_model_order, generator_model
-                        #     ),
-                        #     csv_content=csv_content,
-                        #     filename="data.csv",
-                        #     host=HOST,
-                        #     port=PORT,
-                        # )
+                        util.send_email(
+                            usn=APP_SECRET_GMAIL,
+                            pwd=APP_SECRET_GMAIL_PASSWORD,
+                            sbj="Avaliação LLM: {} - {}/{}".format(
+                                st.session_state.id,
+                                st.session_state.fr_order + 1,
+                                st.session_state.n_fr,
+                            ),
+                            to=APP_SECRET_UFF_RECEIVER,
+                            body="Avaliação LLM: \n Grão fino: {} \n Modelo Gerador: {} \n Ordem que mais gostou: {}".format(
+                                st.session_state.extent,
+                                generator_model,
+                                st.session_state.most_liked_order,
+                            ),
+                            csv_content=csv_content,
+                            filename="data.csv",
+                            host=HOST,
+                            port=PORT,
+                        )
                         st.success(
                             "Respostas enviadas com sucesso! Por favor retorne ao início da página, para ver a próxima avaliação."
                         )

@@ -153,11 +153,12 @@ def load_data():
 if st.session_state["form_submitted"]:
     st.session_state.page_order += 1
     if st.session_state.extent or st.session_state.most_liked_analysis_defined:
+        st.session_state.analises.pop(st.session_state.fr_model_order[0])
+        st.session_state.fr_model_order.pop(0)
+
         if len(st.session_state.fr_model_order) == 0:
             st.session_state.fr_order += 1
             st.session_state.page_order = 0
-        else:
-            st.session_state.fr_model_order.pop(0)
 
         if st.session_state.most_liked_analysis_defined:
             st.session_state.most_liked_analysis_defined = False
@@ -286,14 +287,6 @@ def show_interface():
             generated_text = st.session_state.analises[generator_model]
             print("Modelo: {}".format(generator_model))
 
-            # Verifica se é o último modelo ou se é a versão de validar em par para reiniciar os modelos.
-            if (
-                st.session_state.most_liked_analysis_defined
-                or st.session_state.page_order == st.session_state.n_models
-            ):
-                st.session_state.analises = {}
-                st.session_state.fr_model_order = []
-
             text = (
                 generated_text.replace("# ", "### ")
                 .replace("## ", "### ")
@@ -303,7 +296,7 @@ def show_interface():
 
             # Formulário para avaliação
             st.markdown("## Avaliação")
-            with st.form("avaliacao_form", clear_on_submit=False):
+            with st.form("avaliacao_form", clear_on_submit=True):
                 st.markdown(RELEVANT_INFO["texts"]["form_extent_intro"])
                 st.markdown(form_extent["question0"]["question"])
 
@@ -384,26 +377,27 @@ def show_interface():
                     csv_content = util.dataframe_para_csv(df_answer)
 
                     try:
-                        # # Salvar os dados
-                        util.send_email(
-                            usn=APP_SECRET_GMAIL,
-                            pwd=APP_SECRET_GMAIL_PASSWORD,
-                            sbj="Avaliação LLM: {} - {}/{}".format(
-                                st.session_state.id,
-                                st.session_state.fr_order + 1,
-                                st.session_state.n_fr,
-                            ),
-                            to=APP_SECRET_UFF_RECEIVER,
-                            body="Avaliação LLM: \n Grão fino: {} \n Modelo Gerador: {} \n Ordem que mais gostou: {}".format(
-                                st.session_state.extent,
-                                generator_model,
-                                st.session_state.most_liked_order,
-                            ),
-                            csv_content=csv_content,
-                            filename="data.csv",
-                            host=HOST,
-                            port=PORT,
-                        )
+                        # Salvar os dados
+                        print("Enviando e-mail...")
+                        # util.send_email(
+                        #     usn=APP_SECRET_GMAIL,
+                        #     pwd=APP_SECRET_GMAIL_PASSWORD,
+                        #     sbj="Avaliação LLM: {} - {}/{}".format(
+                        #         st.session_state.id,
+                        #         st.session_state.fr_order + 1,
+                        #         st.session_state.n_fr,
+                        #     ),
+                        #     to=APP_SECRET_UFF_RECEIVER,
+                        #     body="Avaliação LLM: \n Grão fino: {} \n Modelo Gerador: {} \n Ordem que mais gostou: {}".format(
+                        #         st.session_state.extent,
+                        #         generator_model,
+                        #         st.session_state.most_liked_order,
+                        #     ),
+                        #     csv_content=csv_content,
+                        #     filename="data.csv",
+                        #     host=HOST,
+                        #     port=PORT,
+                        # )
                         st.success(
                             "Respostas enviadas com sucesso! Por favor retorne ao início da página, para ver a próxima avaliação."
                         )

@@ -16,9 +16,7 @@ HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
 APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
 APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
-APP_SECRET_UFF_RECEIVER = st.secrets[
-    "APP_SECRET_TEST_RECEIVER"
-]  # APP_SECRET_UFF_RECEIVER"]
+APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
 CSV_FILE_ORIGIN = st.secrets["CSV_FILE_ORIGIN"]
 form_extent = RELEVANT_INFO["form_extent"]
 # logger = setup_logger("logs", "app.log", "INFO")

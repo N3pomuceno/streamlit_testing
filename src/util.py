@@ -35,7 +35,7 @@ def check_login(usn, pwd, host, port):
             return False
 
 
-def send_email(usn, pwd, sbj, to, body, csv_content, filename, host, port):
+def send_email(usn, pwd, sbj, to, body, host, port, csv_content=None, filename=None):
     msg = email.message.EmailMessage()
     msg["subject"] = sbj
     msg["From"] = usn
@@ -43,9 +43,13 @@ def send_email(usn, pwd, sbj, to, body, csv_content, filename, host, port):
     msg.set_content(body)
 
     # Anexar o CSV gerado em memória
-    msg.add_attachment(
-        csv_content.encode("utf-8"), maintype="text", subtype="csv", filename=filename
-    )
+    if csv_content is not None:
+        msg.add_attachment(
+            csv_content.encode("utf-8"),
+            maintype="text",
+            subtype="csv",
+            filename=filename,
+        )
 
     with smtplib.SMTP(host, port) as smtp_cli:
         smtp_cli.set_debuglevel(10)

@@ -2,6 +2,8 @@ import pandas as pd
 
 from logger import setup_logger
 
+FILEPATH = "data/new_gens_0425.csv"
+
 
 def ranking_metrics(df: pd.DataFrame, metrics: list) -> pd.DataFrame:
     """
@@ -42,15 +44,25 @@ def get_top_n_documents(df: pd.DataFrame, n: int) -> list:
     return df_sorted
 
 
+def drop_generator_model(df: pd.DataFrame, generator_models: list) -> pd.DataFrame:
+    """
+    Remove do DataFrame as linhas cujos valores na coluna 'generator_model'
+    estão presentes na lista 'generator_models'.
+    """
+    df = df[~df["generator_model"].isin(generator_models)]
+    return df
+
+
 def main():
     logger = setup_logger("logs", "create_dataframe.log", "INFO")
 
     # Load the DataFrame
     logger.info("Loading DataFrame...")
-    df = pd.read_csv(
-        "data/MeLLL_AIDA_FINANCE_WITHMETRICS.csv", encoding="utf-8", sep=","
-    )
+    df = pd.read_csv(FILEPATH, encoding="utf-8", sep=",")
     df["fr_aval_id"] = df["material fact"] + df["id"]
+
+    # For  each new csv file, must need some treatment, so this space is for that
+    df = drop_generator_model(df, ["gemma2-9b"])
 
     # Define the metrics to rank
     metrics = [

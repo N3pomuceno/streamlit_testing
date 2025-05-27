@@ -313,8 +313,6 @@ def show_interface():
         ##### ⚠️ A escolha do formato de avaliação impacta na quantidade de horas complementares que serão atribuídas!
 
         Escolha o formato que melhor se encaixa na sua disponibilidade e interesse. Em qualquer dos casos, sua participação é muito valiosa para o projeto.
-
-                    ---
                     """)
         st.session_state.extent = st.checkbox("Avaliação Detalhada", value=False)
         st.button("Avançar", key="button1", on_click=next_page)

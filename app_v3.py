@@ -22,7 +22,7 @@ HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
 APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
 APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
-APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
+APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_TEST_RECEIVER"]
 CSV_FILE_ORIGIN = st.secrets["CSV_FILE_ORIGIN"]
 form_extent = RELEVANT_INFO["form_extent"]
 
@@ -82,6 +82,28 @@ def set_session_state():
     # Define o estado do formulário e também o estado das questões.
     init_session_state_var("form_submitted", False)
     init_session_state_var("most_liked", None)
+    init_session_state_var(
+        "csv_data",
+        {
+            "id": [],
+            "analysis_A": [],
+            "analysis_B": [],
+            "most_liked": [],
+            "material_fact": [],
+            "generator_model": [],
+            "factuality_liked_analysis": [],
+            "usefulness_liked_analysis": [],
+            "communicative_clarity_liked_analysis": [],
+            "language_liked_analysis": [],
+            "reason_liked_analysis": [],
+            "factuality_not_liked_analysis": [],
+            "usefulness_not_liked_analysis": [],
+            "communicative_clarity_not_liked_analysis": [],
+            "language_not_liked_analysis": [],
+            "reason_not_liked_analysis": [],
+            "most_liked_order": [],
+        },
+    )
     return None
 
 
@@ -210,37 +232,26 @@ def caracteristicas_texto(key: str) -> dict:
     """
     resposta = {}
     # Cria as checkboxes para o usuário avaliar os textos
-    st.markdown(
-        """
-        ## Em quais aspectos esse texto se destaca? 
-        Lembre-se que se deixar todos os campos em branco, implicará dizer que o texto não se destaca em nenhum aspecto."""
+    resposta["language"] = st.checkbox(
+        "Objetividade",
+        key="language_{}".format(key),
+        help="O texto está bem escrito e fácil de entender? Ele contém frases bem construídas, sem erros de português ou palavras fora de lugar? As ideias seguem uma ordem lógica e fazem sentido juntas? Um texto com frases desconexas, erros de concordância ou vocabulário estranho é considerado não fluente. Quando um parágrafo começa com um assunto e termina falando de outra coisa sem conexão, o texto perde fluência e clareza.",
     )
     resposta["factuality"] = st.checkbox(
         "Factualidade",
         key="factuality_{}".format(key),
-        help="As informações fornecidas pelo texto são verdadeiras e baseadas em fatos verificáveis, mesmo que não tenham sido citados no fato relevante? Um texto que apresenta dados falsos ou distorcidos tem baixa factualidade. Caso as informações tenham sido inventadas (ou alucinadas) a factualidade é baixa.",
+        help="O texto apresenta informações verdadeiras, baseadas em fatos verificáveis, e está alinhado com o conteúdo do fato relevante? Um texto com alta taxe de factualidade deve respeitar os dados e acontecimentos descritos, sem inventar ou distorcer informações. Relatórios que trazem dados falsos ou confusos têm baixa factualidade. Também se espera que o texto não fuja do tema, mantendo foco no que foi realmente divulgado, não fugindo do assunto mencionado no fato relevante.",
     )
     resposta["usefulness"] = st.checkbox(
         "Utilidade",
         key="usefulness_{}".format(key),
-        help="Quanto o texto é útil, informativo e contribui de forma concreta para o entendimento ou a tomada de decisão? Um conteúdo com alta utilidade apresenta informações específicas, relevantes e com valor agregado. Um relatório que apresenta dados objetivos, análises detalhadas e implicações diretas para os acionistas demonstra alta utilidade. Um relatório que traz apenas opiniões vagas, frases genéricas ou observações evidentes (como “a empresa busca sempre crescer”) tem baixa utilidade. De maneira geral, qual análise você considera mais útil para a tomada de decisões?",
+        help="O texto é útil, informativo e contribui de forma concreta para o entendimento ou a tomada de decisão? Um conteúdo com alta utilidade apresenta informações específicas, relevantes e com valor agregado. Um relatório que apresenta dados objetivos, análises detalhadas e implicações diretas para os acionistas demonstra alta utilidade. Um relatório que traz apenas opiniões vagas, frases genéricas ou observações evidentes tem baixa utilidade.",
     )
-    resposta["simplicity"] = st.checkbox(
+    resposta["communicative_clarity"] = st.checkbox(
         "Simplicidade",
-        key="simplicity_{}".format(key),
+        key="communicative_clarity_{}".format(key),
         help="Um texto simples contém linguagem acessível e clara, evitando termos técnicos ou explicando-os quando necessários, de modo que qualquer leitor, mesmo sem formação na área econômica, consiga compreender as informações e argumentos apresentados.",
     )
-    resposta["objectivity"] = st.checkbox(
-        "Objetividade",
-        key="objectivity_{}".format(key),
-        help="O texto apresenta informações e argumentos de forma clara, direta e fundamentada, evitando opiniões vagas? Evita juízos de valor infundados, termos sensacionalistas ou especulações sem base? Acrescenta uma camada analítica, oferecendo interpretações consistentes e bem embasadas, com base em indicadores, cenários econômicos ou tendências de mercado?  Ou limita-se a reproduzir os fatos reportados no fato relevante, mesmo que o faça de forma explicativa e clara?",
-    )
-    resposta["confiability"] = st.checkbox(
-        "Confiabilidade/Parcialidade",
-        key="confiability_{}".format(key),
-        help="O texto apresenta dados e fatos de forma neutra, contextualizando-os corretamente e sem distorções? Menciona fontes confiáveis (relatórios oficiais, indicadores econômicos, declarações verificáveis)? Evita viés político, ideológico ou institucional que possa comprometer a análise? Não omite informações relevantes que poderiam alterar a compreensão do leitor sobre o tema?",
-    )
-
     resposta["reason"] = st.text_input(
         "Quais é o motivo para você definir esses aspectos?",
         key="reason_{}".format(key),
@@ -252,59 +263,182 @@ if st.session_state["form_submitted"]:
     st.session_state.page_order += 1
 
     # Prepara para próxima página
-    if (
-        len(st.session_state.fr_model_order) != 1
-        and not st.session_state.most_liked_analysis_defined
-    ):
+    if len(st.session_state.fr_model_order) != 1:
         logger.info("Resposta = {}".format(st.session_state.most_liked))
         if st.session_state.most_liked == "Análise A":
-            indice = 1
+            indice_liked = 1
+            indice_not_liked = 0
         elif st.session_state.most_liked == "Análise B":
-            indice = 0
+            indice_liked = 0
+            indice_not_liked = 1
+        else:
+            # Pensar em uma solução melhor que essa para o caso do usuário não escolher nenhuma das duas análises.
+            indice_liked = 0
+            indice_not_liked = 1
 
-        # Ordem os textos de acordo com a avaliação do usuário
-        st.session_state.most_liked_order = "{} > {}".format(
-            st.session_state.most_liked_order, st.session_state.fr_model_order[indice]
+        # Define o estado da avaliação para analise em dupla
+        if len(st.session_state.fr_model_order) == st.session_state.n_models + 1:
+            st.session_state.most_liked_order = "{} > {}".format(
+                st.session_state.fr_model_order[indice_not_liked],
+                st.session_state.fr_model_order[indice_liked],
+            )
+        else:
+            st.session_state.most_liked_order = "{} > {}".format(
+                st.session_state.most_liked_order,
+                st.session_state.fr_model_order[indice_liked],
+            )
+        st.session_state.csv_data["id"].append(st.session_state.id)
+        st.session_state.csv_data["analysis_A"].append(
+            st.session_state.analises[st.session_state.fr_model_order[0]]
         )
-    else:
-        indice = 0
+        st.session_state.csv_data["analysis_B"].append(
+            st.session_state.analises[st.session_state.fr_model_order[1]]
+        )
+        st.session_state.csv_data["most_liked"].append(st.session_state.most_liked)
+        st.session_state.csv_data["material_fact"].append(
+            st.session_state.material_fact
+        )
+        st.session_state.csv_data["generator_model"].append(
+            st.session_state.fr_model_order[indice_liked]
+        )
+        st.session_state.csv_data["most_liked_order"].append(
+            st.session_state.most_liked_order
+        )
 
-    if len(st.session_state.fr_model_order) == 1 and st.session_state.extent:
-        novo_dado = {
-            "id": [st.session_state.id],
-            "text": [st.session_state.analises[st.session_state.fr_model_order[0]]],
-            "material_fact": [st.session_state.material_fact],
-            "generator_model": st.session_state.fr_model_order[0],
-            "factuality": [
+        if st.session_state.extent:
+            # Define o estado da avaliação para analise em grão mais fino
+            st.session_state.csv_data["factuality_liked_analysis"].append(
                 "Se destaca"
-                if st.session_state["factuality_{}".format(st.session_state.fr_order)]
+                if st.session_state[
+                    "factuality_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_liked],
+                    )
+                ]
                 else "Não se destaca"
-            ],
-            "usefulness": [
+            )
+            st.session_state.csv_data["usefulness_liked_analysis"].append(
                 "Se destaca"
-                if st.session_state["usefulness_{}".format(st.session_state.fr_order)]
+                if st.session_state[
+                    "usefulness_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_liked],
+                    )
+                ]
                 else "Não se destaca"
-            ],
-            "simplicity": [
+            )
+            st.session_state.csv_data["communicative_clarity_liked_analysis"].append(
                 "Se destaca"
-                if st.session_state["simplicity_{}".format(st.session_state.fr_order)]
+                if st.session_state[
+                    "communicative_clarity_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_liked],
+                    )
+                ]
                 else "Não se destaca"
-            ],
-            "objectivity": [
+            )
+            st.session_state.csv_data["language_liked_analysis"].append(
                 "Se destaca"
-                if st.session_state["objectivity_{}".format(st.session_state.fr_order)]
+                if st.session_state[
+                    "language_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_liked],
+                    )
+                ]
                 else "Não se destaca"
-            ],
-            "confiability": [
+            )
+            st.session_state.csv_data["reason_liked_analysis"].append(
+                st.session_state[
+                    "reason_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_liked],
+                    )
+                ]
+            )
+            st.session_state.csv_data["factuality_not_liked_analysis"].append(
                 "Se destaca"
-                if st.session_state["confiability_{}".format(st.session_state.fr_order)]
+                if not st.session_state[
+                    "factuality_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_not_liked],
+                    )
+                ]
                 else "Não se destaca"
-            ],
-            "reason": [st.session_state["reason_{}".format(st.session_state.fr_order)]],
-            "most_liked_order": [st.session_state.most_liked_order],
-        }
+            )
+            st.session_state.csv_data["usefulness_not_liked_analysis"].append(
+                "Se destaca"
+                if not st.session_state[
+                    "usefulness_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_not_liked],
+                    )
+                ]
+                else "Não se destaca"
+            )
+            st.session_state.csv_data[
+                "communicative_clarity_not_liked_analysis"
+            ].append(
+                "Se destaca"
+                if not st.session_state[
+                    "communicative_clarity_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_not_liked],
+                    )
+                ]
+                else "Não se destaca"
+            )
+            st.session_state.csv_data["language_not_liked_analysis"].append(
+                "Se destaca"
+                if not st.session_state[
+                    "language_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_not_liked],
+                    )
+                ]
+                else "Não se destaca"
+            )
+            st.session_state.csv_data["reason_not_liked_analysis"].append(
+                st.session_state[
+                    "reason_{}_{}".format(
+                        st.session_state.fr_order,
+                        st.session_state.fr_model_order[indice_not_liked],
+                    )
+                ]
+            )
+        else:
+            st.session_state.csv_data["factuality_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data["usefulness_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data["communicative_clarity_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data["language_liked_analysis"].append("Não se aplica")
+            st.session_state.csv_data["reason_liked_analysis"].append("Não se aplica")
+            st.session_state.csv_data["factuality_not_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data["usefulness_not_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data[
+                "communicative_clarity_not_liked_analysis"
+            ].append("Não se aplica")
+            st.session_state.csv_data["language_not_liked_analysis"].append(
+                "Não se aplica"
+            )
+            st.session_state.csv_data["reason_not_liked_analysis"].append(
+                "Não se aplica"
+            )
 
-        df_answer = pd.DataFrame(novo_dado)
+    # Retira o outro texto da lista
+    st.session_state.analises.pop(st.session_state.fr_model_order[indice_liked])
+    st.session_state.fr_model_order.pop(indice_liked)
+
+    if len(st.session_state.fr_model_order) == 1:
+        df_answer = pd.DataFrame(st.session_state.csv_data)
 
         # Converter para CSV em memória
         csv_content = util.dataframe_para_csv(df_answer)
@@ -328,40 +462,10 @@ if st.session_state["form_submitted"]:
             host=HOST,
             port=PORT,
         )
-    # Retira o outro texto da lista
-    st.session_state.analises.pop(st.session_state.fr_model_order[indice])
-    st.session_state.fr_model_order.pop(indice)
-    # Caso sobre somente uma última análise, define a análise mais gostada
-    if len(st.session_state.fr_model_order) == 1:
-        st.session_state.most_liked_analysis_defined = True
-        st.session_state.most_liked_order = "{} > {}".format(
-            st.session_state.most_liked_order, st.session_state.fr_model_order[0]
-        )
-        if not st.session_state.extent:
-            util.send_email(
-                usn=APP_SECRET_GMAIL,
-                pwd=APP_SECRET_GMAIL_PASSWORD,
-                sbj="Avaliação LLM: {} - {}/{}".format(
-                    st.session_state.id,
-                    st.session_state.fr_order + 1,
-                    st.session_state.n_fr,
-                ),
-                to=APP_SECRET_UFF_RECEIVER,
-                body="Avaliação LLM: \n Grão fino: {} \n Modelo Gerador: {} \n Ordem que mais gostou: {}".format(
-                    "Comparativo Simples",
-                    st.session_state.fr_model_order[0],
-                    st.session_state.most_liked_order,
-                ),
-                host=HOST,
-                port=PORT,
-            )
-            st.session_state.analises.pop(st.session_state.fr_model_order[0])
-            st.session_state.fr_model_order.pop()
-    if len(st.session_state.fr_model_order) == 0:
-        st.session_state.most_liked_analysis_defined = False
         st.session_state.most_liked_order = ""
         st.session_state.fr_order += 1
         st.session_state.analises = {}
+        st.session_state.fr_model_order = []
     st.session_state["form_submitted"] = False
 
 
@@ -444,70 +548,60 @@ def show_interface():
             """
             )
 
-        logger.info(
-            "{} - {}".format(
-                st.session_state.extent, st.session_state.most_liked_analysis_defined
-            )
+        # Avaliação comparativa simples
+        # Definir as duas análises por ordem da lista
+        logger.info("Hora da análise: {}".format(st.session_state.fr_model_order))
+        texto1, texto2 = select_texts(
+            st.session_state.analises, st.session_state.fr_model_order
         )
 
-        if st.session_state.extent and st.session_state.most_liked_analysis_defined:
-            # Avaliação detalhada da última análise, a que o usuário mais gostou.
-            logger.info(
-                "Análise detalhada: {}".format(st.session_state.fr_model_order[0])
+        # Preparar textos e definir as colunas
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.header("Análise A")
+            texto1 = remover_elementos_markdown(texto1)
+            texto1 = (
+                texto1.replace("# ", "### ").replace("## ", "### ").replace("$", r"\$")
             )
-            texto = st.session_state.analises[st.session_state.fr_model_order[0]]
-            texto = remover_elementos_markdown(texto)
-            texto = (
-                texto.replace("# ", "### ").replace("## ", "### ").replace("$", r"\$")
+            st.markdown(texto1)
+        with col2:
+            st.header("Análise B")
+            texto2 = remover_elementos_markdown(texto2)
+            texto2 = (
+                texto2.replace("# ", "### ").replace("## ", "### ").replace("$", r"\$")
             )
-            st.markdown(texto)
+            st.markdown(texto2)
 
-            # Formulário para avaliação
-            st.markdown("## Avaliação")
-            with st.form("form_most_liked", clear_on_submit=True):
-                caracteristicas_texto(st.session_state.fr_order)
-                st.form_submit_button("Enviar", on_click=form_callback)
-        else:
-            # Avaliação comparativa simples
-            # Definir as duas análises por ordem da lista
-            logger.info("Hora da análise: {}".format(st.session_state.fr_model_order))
-            texto1, texto2 = select_texts(
-                st.session_state.analises, st.session_state.fr_model_order
+        # Formulário para avaliação
+        st.markdown("## Avaliação")
+        with st.form("form_most_liked", clear_on_submit=True):
+            st.markdown("#### Qual análise você mais gostou? (Selecione uma opção)")
+            st.pills(
+                "Selecione uma opção",
+                options=["Análise A", "Análise B"],
+                key="most_liked",
+                label_visibility="collapsed",
             )
-
-            # Preparar textos e definir as colunas
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.header("Análise A")
-                texto1 = remover_elementos_markdown(texto1)
-                texto1 = (
-                    texto1.replace("# ", "### ")
-                    .replace("## ", "### ")
-                    .replace("$", r"\$")
+            if st.session_state.extent:
+                st.markdown("#### Avalie as análises com base nos critérios abaixo:")
+                col3, col4 = st.columns(2)
+                # Avaliação detalhada
+                st.markdown(
+                    """
+                Lembre-se que se deixar todos os campos em branco, implicará dizer que o texto não se destaca em nenhum aspecto."""
                 )
-                st.markdown(texto1)
-            with col2:
-                st.header("Análise B")
-                texto2 = remover_elementos_markdown(texto2)
-                texto2 = (
-                    texto2.replace("# ", "### ")
-                    .replace("## ", "### ")
-                    .replace("$", r"\$")
-                )
-                st.markdown(texto2)
-
-            # Formulário para avaliação
-            st.markdown("## Avaliação")
-            with st.form("form_most_liked", clear_on_submit=True):
-                st.markdown("#### Qual análise você mais gostou? (Selecione uma opção)")
-                st.pills(
-                    "Selecione uma opção",
-                    options=["Análise A", "Análise B"],
-                    key="most_liked",
-                    label_visibility="collapsed",
-                )
-                st.form_submit_button("Enviar", on_click=form_callback)
+                with col3:
+                    st.markdown("**Análise A**")
+                    caracteristicas_texto(
+                        f"{st.session_state.fr_order}_{st.session_state.fr_model_order[0]}"
+                    )
+                with col4:
+                    st.markdown("**Análise B**")
+                    caracteristicas_texto(
+                        f"{st.session_state.fr_order}_{st.session_state.fr_model_order[1]}"
+                    )
+            st.form_submit_button("Enviar", on_click=form_callback)
 
 
 def main():

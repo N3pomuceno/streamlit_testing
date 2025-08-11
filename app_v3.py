@@ -77,7 +77,7 @@ def set_session_state():
     init_session_state_var("most_liked_order", "")
 
     # Define o estado da avaliação para o caso de avaliar em grão mais fino.
-    init_session_state_var("extent", False)
+    init_session_state_var("extent", "Avaliação Simples")
 
     # Define o estado do formulário e também o estado das questões.
     init_session_state_var("form_submitted", False)
@@ -140,6 +140,14 @@ def next_page():
 
 # Callback do botão — só marca que o botão foi clicado do formulário.
 def form_callback():
+    st.components.v1.html(
+        """
+        <script>
+            window.location.href = '#top';
+        </script>
+        """,
+        height=0,
+    )
     st.session_state["form_submitted"] = True
 
 
@@ -305,7 +313,7 @@ if st.session_state["form_submitted"]:
             st.session_state.most_liked_order
         )
 
-        if st.session_state.extent:
+        if st.session_state.extent == "Avaliação Detalhada":
             # Define o estado da avaliação para analise em grão mais fino
             st.session_state.csv_data["factuality_liked_analysis"].append(
                 "Se destaca"
@@ -471,33 +479,39 @@ if st.session_state["form_submitted"]:
 
 def show_interface():
     # Título
+    st.markdown("<div id='top'></div>", unsafe_allow_html=True)
     st.title("Avaliação LLM 🤖")
 
     if st.session_state.order == 0:
         st.markdown("""
                     ### Bem-vindo(a)!
 
-        Esse formulário é parte de uma pesquisa científica para entender a qualidade de análises de documentos financeiros geradas por inteligência artificial.
+        Esse formulário é parte de uma pesquisa científica para entender a **qualidade de análises** de documentos financeiros geradas por inteligência artificial.
 
         Este formulário tem como objetivo coletar avaliações de diferentes análises sobre documentos financeiros específicos. A sua participação é fundamental para compreendermos a percepção sobre a qualidade das análises produzidas com base em critérios como fluência textual, factualidade e coerência argumentativa, entre outros.
-        Para nos ajudar nessa pesquisa, você, que já tem familiaridade com esse tipo de conteúdo, vai avaliar duas análises sobre o mesmo documento.
+        Para nos ajudar nessa pesquisa, você, que já tem familiaridade com esse tipo de conteúdo, vai **avaliar duas análises sobre o mesmo documento**.
 
         Você poderá escolher entre dois formatos de avaliação:
 
         #### **Avaliação Comparativa Simples**
 
-        Nesta opção, você irá ler um “fato relevante” e, em seguida, comparar duasas análises disponíveis sobre este fato. Então, você irá e escolher a melhor análiseaquela que mais se destaca em sua opinião. Em seguida, você fará uma avaliação detalhada apenas dessa análise escolhida.
+        Nesta opção, você irá ler um “fato relevante” e, em seguida, comparar duas as análises disponíveis sobre este fato. Então, você irá e escolher a melhor análise aquela que mais se destaca em sua opinião. Em seguida, você fará uma avaliação detalhada apenas dessa análise escolhida.
 
         #### **Avaliação Detalhada de Todas as Análises**
 
-        Ao optar por participar da avaliação detalhada, além de escolher a melhor análise, você irá detalhar porquê escolheu determinada análise. Aqui você poderá avaliar critérios como 
-        Nesta opção, você realizará uma avaliação individual e aprofundada de todas as análises disponíveis, atribuindo notas ou comentários sobre aspectos como fluência e, precisão dos dados, também poderá incluir seu próprio critérioestrutura argumentativa, entre outros.Ao Para escolher essa opção, você deve estar ciente de que a avaliação será mais extensa e exigirá mais tempo. Você estará ajudando não apenas a entender a habilidade de inteligências artificias para o domínio financeiro, mas também estará indicando o que precisamos melhorar. Caso tenha interesse nela, basta marcar a opção abaixo.
+        Ao optar por participar da avaliação detalhada, além de escolher a melhor análise, você irá **detalhar o porquê escolheu determinada análise**. 
+        Nesta opção, você realizará uma avaliação individual e aprofundada de todas as análises disponíveis, atribuindo notas ou comentários sobre aspectos como objetividade, utilizadade, simplicidade e, factualidade. Para escolher essa opção, você deve estar ciente de que a avaliação será mais extensa e exigirá mais tempo. Você estará ajudando não apenas a entender a habilidade de inteligências artificiais para o domínio financeiro, mas também estará indicando o que precisamos melhorar. Caso tenha interesse nela, basta marcar a opção abaixo.
 
         ##### ⚠️ A escolha do formato de avaliação impacta na quantidade de horas complementares que serão atribuídas!
 
         Escolha o formato que melhor se encaixa na sua disponibilidade e interesse. Em qualquer dos casos, sua participação é muito valiosa para o projeto.
                     """)
-        st.session_state.extent = st.checkbox("Avaliação Detalhada", value=False)
+        st.session_state.extent = st.radio(
+            "tipo_avaliacao",
+            ["Avaliação Simples", "Avaliação Detalhada"],
+            index=0,
+            label_visibility="collapsed",
+        )
         st.button("Avançar", key="button1", on_click=next_page)
     elif st.session_state.n_fr == st.session_state.fr_model_order:  # Last Page
         st.markdown(
@@ -583,7 +597,7 @@ def show_interface():
                 key="most_liked",
                 label_visibility="collapsed",
             )
-            if st.session_state.extent:
+            if st.session_state.extent == "Avaliação Detalhada":
                 st.markdown("#### Avalie as análises com base nos critérios abaixo:")
                 col3, col4 = st.columns(2)
                 # Avaliação detalhada

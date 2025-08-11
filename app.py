@@ -16,7 +16,7 @@ HOST = st.secrets["HOST"]
 PORT = st.secrets["PORT"]
 APP_SECRET_GMAIL = st.secrets["APP_SECRET_UFF_MAIL"]
 APP_SECRET_GMAIL_PASSWORD = st.secrets["APP_SECRET_UFF_PASSWORD"]
-APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_UFF_RECEIVER"]
+APP_SECRET_UFF_RECEIVER = st.secrets["APP_SECRET_TEST_RECEIVER"]
 CSV_FILE_ORIGIN = st.secrets["CSV_FILE_ORIGIN"]
 form_extent = RELEVANT_INFO["form_extent"]
 # logger = setup_logger("logs", "app.log", "INFO")
@@ -280,6 +280,7 @@ def show_interface():
 
         # Verifica se é a avaliação em grão mais fino ou se é o último caso da avaliação de comparação
         if st.session_state.extent or st.session_state.most_liked_analysis_defined:
+            print("Avaliação em grão mais fino ou última avaliação de comparação.")
             print(st.session_state.fr_model_order)
             generator_model = st.session_state.fr_model_order[0]
             generated_text = st.session_state.analises[generator_model]
@@ -353,8 +354,11 @@ def show_interface():
                 )
 
                 enviado = st.form_submit_button("Enviar", on_click=form_callback)
-
+                print(
+                    enviado
+                )  # TODO Está falso!!! Tomar cuidado com isso. Verificar porque não está funcionando.
                 if enviado:
+                    print("Novo dado sendo formatado para envio.")
                     novo_dado = {
                         "id": [st.session_state.id],
                         "text": [text],
@@ -457,7 +461,12 @@ def show_interface():
                     key="most_liked",
                     label_visibility="collapsed",
                 )
-                enviado = st.form_submit_button("Enviar", on_click=form_callback)
+                enviado2 = st.form_submit_button("Enviar", on_click=form_callback)
+
+                if enviado2:
+                    st.success(
+                        "Resposta enviada com sucesso! Por favor retorne ao início da página, para ver a próxima avaliação."
+                    )
 
 
 def main():
